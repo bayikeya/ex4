@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>複数スポット音声ナビ</title>
+</head>
+<body>
+  <h2>スポットに近づくと音声が再生されます</h2>
+  <p id="status">位置情報を取得中...</p>
+
+  <!-- 音声プレイヤーは動的に切り替えます -->
+  <audio id="audio" preload="auto"></audio>
+
+  <script>
+    // スポットの配列（緯度, 経度, mp3ファイルパス）
+    const spots = [
+      {
+        name: "13号館前",
+        lat: 35.69304364103873,
+        lng: 140.0508453073827,
+        audio: "SpotiDownloader.com - シンクロニシティ - Nogizaka46.mp3",
+        played: false
+      },
+      {
+        name: "14号館正面入り口",
+        lat: 35.69253471617953,
+        lng: 140.05090829936066,
+        audio: "SpotiDownloader.com - 世界には愛しかない - Keyakizaka46 .mp3",
+        played: false
+      },
+      {
+        name: "図書館前",
+        lat: 35.69199985853299,
+        lng: 140.05079113020798,
+        audio: "SpotiDownloader.com - コンセントレーション - Keyakizaka46.mp3",
+        played: false
+      }
+    ];
+
+    const radius = 10; // 10m以内で再生
+    const audioElement = document.getElementById("audio");
+
+    // ハーサイン距離計算
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function checkPosition(position) {
+      const userLat = position.coords.latitude;
+      const userLng = position.coords.longitude;
+      let statusText = `現在地: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}<br>`;
+
+      for (const spot of spots) {
+        const dist = getDistance(userLat, userLng, spot.lat, spot.lng);
+        statusText += `${spot.name}までの距離: ${dist.toFixed(2)} m<br>`;
+
+        if (dist < radius && !spot.played) {
+          spot.played = true;
+          audioElement.src = spot.audio;
+          audioElement.play();
+          statusText += `→ ${spot.name} に到達！音声を再生中...<br>`;
+        }
+      }
+
+      document.getElementById("status").innerHTML = statusText;
+    }
+
+    function error(err) {
+      document.getElementById("status").textContent = "位置情報の取得に失敗しました: " + err.message;
+    }
+
+    // 位置情報監視開始
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(checkPosition, error, {
+        enableHighAccuracy: true,
+        maximumAge: 1000,
+        timeout: 10000
+      });
+    } else {
+      document.getElementById("status").textContent = "このブラウザは位置情報に対応していません。";
+    }
+  </script>
+</body>
+</html>
